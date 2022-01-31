@@ -1,7 +1,6 @@
 resources:
 - statefulset.yaml
 - loadbalancer-deployment.yaml
-- ingress.yaml
 - service.yaml
 - role.yaml
 - rolebinding.yaml
