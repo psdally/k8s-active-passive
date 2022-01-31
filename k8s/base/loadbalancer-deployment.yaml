@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadbalancer-deployment
+  labels:
+    app.kubernetes.io/name: loadbalancer
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: loadbalancer-deployment
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: loadbalancer-deployment
+    spec:                 
+      containers:
+        - name: hello-world
+          image: helloworld-webserver:1.0
+          imagePullPolicy: IfNotPresent
+          command:
+          - bash
+          - -c
+          - |
+            getTimestamp() {
+              local func_result=$(date +"%Y-%m-%d %H:%M:%S.%N%z")
+              echo "$func_result"
+            }
+            writeLog() {
+              echo "$(getTimestamp) $1" | tee -a /loadbalancer.$(date +"%Y%m%d").log
+            }
+            getActivePods() {
+              kubectl get pods -l role=active -o jsonpath='{range .items[]}{.metadata.name}{"\n"}{end}' | grep ^helloworld-statefulset-[0-9]*$
+            }
+            getPassivePods() {
+              kubectl get pods -l role=passive -o jsonpath='{range .items[]}{.metadata.name}{"\n"}{end}' | grep ^helloworld-statefulset-[0-9]*$
+            }
+
+            writeLog "Starting..."
+            while true; do
+
+              active=$(getActivePods)
+              writeLog "$active is the active pod"
+              passive=$(getPassivePods)
+              writeLog "$passive is the passive pod"
+
+              if [ -z "$active" ]; then 
+                 kubectl patch pod helloworld-statefulset-0 -p '{"metadata": {"labels": {"role":"active"}}}';
+                 kubectl patch pod helloworld-statefulset-1 -p '{"metadata": {"labels": {"role":"passive"}}}';
+              fi
+
+              # Detect status of both active and passive pods
+              active_http_response=$(curl -s -o /dev/null -I -w "%{http_code}" http://$active.helloworld-allpods-svc:8080/health)  
+              writeLog "Active pod HTTP response: $active_http_response"
+              passive_http_response=$(curl -s -o /dev/null -I -w "%{http_code}" http://$passive.helloworld-allpods-svc:8080/health)
+              writeLog "Passive pod HTTP response: $passive_http_response"
+
+              if [ "$active_http_response" = "200" ]; then
+                writeLog "Active node passed healthcheck"
+              else
+                writeLog "Detected application health failure"
+                if [ "$passive_http_response" = "200" ]; then
+                   writeLog "Enabling $passive"
+                   kubectl patch pod $active -p '{"metadata": {"labels": {"role":"passive"}}}';
+                   kubectl patch pod $passive -p '{"metadata": {"labels": {"role":"active"}}}';
+                else
+                  writeLog "Passive pod failing health check as well... leaving active pod enabled"
+                fi
+              fi
+              sleep 10
+            done
+
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi

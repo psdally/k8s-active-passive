@@ -1,0 +1,5 @@
+# This is for local environment only, and should not be included in any other overlays
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: local-demo-activepassive-ns

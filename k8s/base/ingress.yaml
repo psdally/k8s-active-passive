@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: helloworld-ingress
+  annotations:
+
+    # Determines the URI the request is mapped to
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    # Indicates that the service's Cluster IP and port should be used 
+    # instead of a list of all endpoints. This reduces the time for 
+    # changes to the service endpoints to take effect
+    nginx.ingress.kubernetes.io/service-upstream: "true"
+
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /helloworld-svc/(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: helloworld-svc
+            port:
+              number: 8080

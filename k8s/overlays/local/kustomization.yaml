@@ -1,0 +1,31 @@
+bases:
+- ../../base
+
+resources:
+# namespaces are provisioned with the container services portal - this is for local only
+- namespace.yaml
+
+generatorOptions:
+ disableNameSuffixHash: true
+ 
+namespace: local-demo-activepassive-ns
+
+commonLabels:
+  
+  # The name of a higher level application this one is part of
+  # If this application is not part of a higher level application, just specify n/a
+  app.kubernetes.io/part-of: helloworld
+
+  # A unique name identifying the instance of an application  
+  app.kubernetes.io/instance: blue
+  
+  # The tool being used to manage the operation of an application
+  app.kubernetes.io/managed-by: kustomize
+
+patchesJson6902:
+- path: rolebinding-patch.yaml
+  target:
+    version: v1
+    kind: RoleBinding
+    group: rbac.authorization.k8s.io
+    name: loadbalancer
