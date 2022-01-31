@@ -1,1 +1,2 @@
-Under construction - please accept our apologies, we'll get this back online as soon as possible!
+Please see:
+https://faun.pub/active-passive-load-balancing-with-kubernetes-services-742cae1938af
